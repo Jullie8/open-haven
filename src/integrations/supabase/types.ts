@@ -181,9 +181,110 @@ export type Database = {
         }
         Relationships: []
       }
+      review_helpfulness: {
+        Row: {
+          created_at: string
+          id: string
+          is_helpful: boolean
+          review_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_helpful?: boolean
+          review_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_helpful?: boolean
+          review_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_helpfulness_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reviews: {
+        Row: {
+          created_at: string
+          id: string
+          location_id: string
+          organization_id: string
+          rating: number
+          review_text: string
+          title: string
+          updated_at: string
+          user_id: string
+          verified_visit: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_id: string
+          organization_id: string
+          rating: number
+          review_text: string
+          title: string
+          updated_at?: string
+          user_id: string
+          verified_visit?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_id?: string
+          organization_id?: string
+          rating?: number
+          review_text?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          verified_visit?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      location_ratings: {
+        Row: {
+          average_rating: number | null
+          location_id: string | null
+          review_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       [_ in never]: never
