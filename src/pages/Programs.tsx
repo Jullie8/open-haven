@@ -22,12 +22,19 @@ interface Location {
   };
 }
 
+interface LocationRating {
+  location_id: string;
+  average_rating: number;
+  review_count: number;
+}
+
 interface Favorite {
   location_id: string;
 }
 
 const Programs = () => {
   const [locations, setLocations] = useState<Location[]>([]);
+  const [ratings, setRatings] = useState<LocationRating[]>([]);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +56,7 @@ const Programs = () => {
 
   useEffect(() => {
     fetchLocations();
+    fetchRatings();
   }, []);
 
   useEffect(() => {
@@ -105,6 +113,23 @@ const Programs = () => {
     } catch (error) {
       console.error("Error fetching favorites:", error);
     }
+  };
+
+  const fetchRatings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("location_ratings")
+        .select("*");
+
+      if (error) throw error;
+      setRatings(data || []);
+    } catch (error) {
+      console.error("Error fetching ratings:", error);
+    }
+  };
+
+  const getRating = (locationId: string) => {
+    return ratings.find(r => r.location_id === locationId);
   };
 
   const filteredLocations = locations.filter((location) => {
@@ -192,6 +217,7 @@ const Programs = () => {
                     accessibilityFeatures={location.accessibility_features || undefined}
                     isFavorited={isFavorited(location.id)}
                     onFavoriteToggle={fetchFavorites}
+                    rating={getRating(location.id)}
                   />
                 ))}
               </div>

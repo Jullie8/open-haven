@@ -8,12 +8,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
   MapPin, Phone, Mail, Globe, Calendar, Heart, 
-  ArrowLeft, Loader2, CheckCircle2, StickyNote 
+  ArrowLeft, Loader2, CheckCircle2, StickyNote, Star
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ReviewCard } from "@/components/ReviewCard";
+import { ReviewForm } from "@/components/ReviewForm";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface LocationData {
   id: string;
@@ -27,6 +30,7 @@ interface LocationData {
   longitude: number | null;
   schedule: string | null;
   accessibility_features: string[] | null;
+  organization_id: string;
   organizations: {
     name: string;
     description: string | null;
@@ -44,12 +48,35 @@ interface FavoriteData {
   visit_date: string | null;
 }
 
+interface ReviewData {
+  id: string;
+  rating: number;
+  title: string;
+  review_text: string;
+  created_at: string;
+  verified_visit: boolean;
+  profiles?: {
+    full_name: string | null;
+  } | null;
+}
+
+interface ReviewHelpfulness {
+  review_id: string;
+  user_id: string;
+}
+
 const LocationDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [location, setLocation] = useState<LocationData | null>(null);
   const [favorite, setFavorite] = useState<FavoriteData | null>(null);
+  const [reviews, setReviews] = useState<ReviewData[]>([]);
+  const [helpfulness, setHelpfulness] = useState<ReviewHelpfulness[]>([]);
+  const [averageRating, setAverageRating] = useState<number | null>(null);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [userReview, setUserReview] = useState<ReviewData | null>(null);
+  const [sortBy, setSortBy] = useState("recent");
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState("");
@@ -77,8 +104,15 @@ const LocationDetail = () => {
   useEffect(() => {
     if (user && id) {
       fetchFavorite();
+      fetchUserReview();
     }
   }, [user, id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchReviews();
+    }
+  }, [id, sortBy]);
 
   const fetchLocation = async () => {
     try {
@@ -96,6 +130,7 @@ const LocationDetail = () => {
           longitude,
           schedule,
           accessibility_features,
+          organization_id,
           organizations (
             name,
             description,
@@ -227,6 +262,106 @@ const LocationDetail = () => {
     }
   };
 
+  const fetchReviews = async () => {
+    if (!id) return;
+
+    try {
+      let query = supabase
+        .from("reviews")
+        .select(`
+          id,
+          rating,
+          title,
+          review_text,
+          created_at,
+          verified_visit,
+          user_id
+        `)
+        .eq("location_id", id);
+
+      if (sortBy === "recent") {
+        query = query.order("created_at", { ascending: false });
+      } else if (sortBy === "highest") {
+        query = query.order("rating", { ascending: false });
+      } else if (sortBy === "lowest") {
+        query = query.order("rating", { ascending: true });
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      
+      // Fetch profile data for each review
+      if (data && data.length > 0) {
+        const userIds = data.map(r => r.user_id);
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", userIds);
+
+        if (!profileError && profileData) {
+          const reviewsWithProfiles = data.map(review => ({
+            ...review,
+            profiles: profileData.find(p => p.id === review.user_id) || null
+          }));
+          setReviews(reviewsWithProfiles as ReviewData[]);
+        } else {
+          setReviews(data as ReviewData[]);
+        }
+      } else {
+        setReviews([]);
+      }
+      
+      setReviewCount(data?.length || 0);
+
+      // Calculate average
+      if (data && data.length > 0) {
+        const avg = data.reduce((sum, r) => sum + r.rating, 0) / data.length;
+        setAverageRating(Math.round(avg * 10) / 10);
+      }
+
+      // Fetch helpfulness
+      if (user) {
+        const { data: helpData, error: helpError } = await supabase
+          .from("review_helpfulness")
+          .select("review_id, user_id")
+          .in("review_id", data?.map(r => r.id) || []);
+
+        if (!helpError) {
+          setHelpfulness(helpData || []);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+    }
+  };
+
+  const fetchUserReview = async () => {
+    if (!user || !id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("id, rating, title, review_text, created_at, verified_visit")
+        .eq("user_id", user.id)
+        .eq("location_id", id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setUserReview(data as ReviewData | null);
+    } catch (error) {
+      console.error("Error fetching user review:", error);
+    }
+  };
+
+  const getHelpfulCount = (reviewId: string) => {
+    return helpfulness.filter(h => h.review_id === reviewId).length;
+  };
+
+  const userHasVoted = (reviewId: string) => {
+    return user ? helpfulness.some(h => h.review_id === reviewId && h.user_id === user.id) : false;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -277,6 +412,17 @@ const LocationDetail = () => {
                     <CardTitle className="text-2xl mb-2">{location.organizations.name}</CardTitle>
                     {location.name && (
                       <p className="text-lg text-muted-foreground">{location.name}</p>
+                    )}
+                    {averageRating !== null && reviewCount > 0 && (
+                      <div className="flex items-center gap-2 mt-3">
+                        <div className="flex items-center gap-1">
+                          <Star className="h-5 w-5 fill-primary text-primary" />
+                          <span className="text-xl font-bold">{averageRating}</span>
+                        </div>
+                        <span className="text-muted-foreground">
+                          ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})
+                        </span>
+                      </div>
                     )}
                   </div>
                   <Button
@@ -441,9 +587,82 @@ const LocationDetail = () => {
                       "Save Notes"
                     )}
                   </Button>
-                </CardContent>
-              </Card>
-            </div>
+              </CardContent>
+            </Card>
+
+            {/* Reviews Section */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Reviews</CardTitle>
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="recent">Most Recent</SelectItem>
+                      <SelectItem value="highest">Highest Rated</SelectItem>
+                      <SelectItem value="lowest">Lowest Rated</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {user && favorite && !userReview && (
+                  <ReviewForm
+                    locationId={id!}
+                    organizationId={location.organization_id}
+                    userId={user.id}
+                    onReviewSubmitted={() => {
+                      fetchReviews();
+                      fetchUserReview();
+                    }}
+                  />
+                )}
+
+                {user && userReview && (
+                  <ReviewForm
+                    locationId={id!}
+                    organizationId={location.organization_id}
+                    userId={user.id}
+                    existingReview={userReview}
+                    onReviewSubmitted={() => {
+                      fetchReviews();
+                      fetchUserReview();
+                    }}
+                  />
+                )}
+
+                {!user && (
+                  <div className="text-center py-6 border rounded-lg bg-muted/50">
+                    <p className="text-muted-foreground mb-3">Sign in to write a review</p>
+                    <Button onClick={() => navigate("/auth")}>
+                      Sign In
+                    </Button>
+                  </div>
+                )}
+
+                {reviews.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No reviews yet. Be the first to review this location!
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {reviews.map((review) => (
+                      <ReviewCard
+                        key={review.id}
+                        review={review}
+                        helpfulCount={getHelpfulCount(review.id)}
+                        userHasVoted={userHasVoted(review.id)}
+                        user={user}
+                        onVoteUpdate={fetchReviews}
+                      />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
           )}
         </div>
       </div>
