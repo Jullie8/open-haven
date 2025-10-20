@@ -390,18 +390,6 @@ const LocationDetail = () => {
               </CardContent>
             </Card>
 
-            {location.latitude && location.longitude && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Location Map</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                    <p className="text-muted-foreground">Map integration coming soon</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
           {user && favorite && (
