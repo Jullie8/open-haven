@@ -536,62 +536,8 @@ const LocationDetail = () => {
               </CardContent>
             </Card>
 
-          </div>
-
-          {user && favorite && (
-            <div className="lg:col-span-1">
-              <Card className="sticky top-20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <StickyNote className="h-5 w-5" />
-                    Your Notes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Notes about this location</Label>
-                    <Textarea
-                      id="notes"
-                      placeholder="Add your thoughts, questions, or observations..."
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={6}
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="visited"
-                      checked={visited}
-                      onCheckedChange={(checked) => setVisited(checked as boolean)}
-                    />
-                    <Label 
-                      htmlFor="visited"
-                      className="text-sm font-normal cursor-pointer"
-                    >
-                      I've visited this location
-                    </Label>
-                  </div>
-
-                  <Button
-                    onClick={handleSaveNotes}
-                    disabled={savingNotes}
-                    className="w-full"
-                  >
-                    {savingNotes ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save Notes"
-                    )}
-                  </Button>
-              </CardContent>
-            </Card>
-
             {/* Reviews Section */}
-            <Card>
+            <Card className="mt-6">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Reviews</CardTitle>
@@ -608,7 +554,7 @@ const LocationDetail = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                {user && favorite && !userReview && (
+                {user && !userReview && (
                   <ReviewForm
                     locationId={id!}
                     organizationId={location.organization_id}
@@ -663,6 +609,59 @@ const LocationDetail = () => {
               </CardContent>
             </Card>
           </div>
+
+          {user && favorite && (
+            <div className="lg:col-span-1">
+              <Card className="sticky top-20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <StickyNote className="h-5 w-5" />
+                    Your Notes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notes about this location</Label>
+                    <Textarea
+                      id="notes"
+                      placeholder="Add your thoughts, questions, or observations..."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={6}
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="visited"
+                      checked={visited}
+                      onCheckedChange={(checked) => setVisited(checked as boolean)}
+                    />
+                    <Label 
+                      htmlFor="visited"
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      I've visited this location
+                    </Label>
+                  </div>
+
+                  <Button
+                    onClick={handleSaveNotes}
+                    disabled={savingNotes}
+                    className="w-full"
+                  >
+                    {savingNotes ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Notes"
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
           )}
         </div>
       </div>
