@@ -16,7 +16,9 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ReviewCard } from "@/components/ReviewCard";
 import { ReviewForm } from "@/components/ReviewForm";
+import { DetailedReviewForm } from "@/components/review/DetailedReviewForm";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface LocationData {
   id: string;
@@ -555,29 +557,48 @@ const LocationDetail = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                {user && !userReview && (
-                  <ReviewForm
-                    locationId={id!}
-                    organizationId={location.organization_id}
-                    userId={user.id}
-                    onReviewSubmitted={() => {
-                      fetchReviews();
-                      fetchUserReview();
-                    }}
-                  />
-                )}
-
-                {user && userReview && (
-                  <ReviewForm
-                    locationId={id!}
-                    organizationId={location.organization_id}
-                    userId={user.id}
-                    existingReview={userReview}
-                    onReviewSubmitted={() => {
-                      fetchReviews();
-                      fetchUserReview();
-                    }}
-                  />
+                {user && (
+                  <Tabs defaultValue="quick" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="quick">Quick Review</TabsTrigger>
+                      <TabsTrigger value="detailed">Detailed Review</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="quick">
+                      {!userReview ? (
+                        <ReviewForm
+                          locationId={id!}
+                          organizationId={location.organization_id}
+                          userId={user.id}
+                          onReviewSubmitted={() => {
+                            fetchReviews();
+                            fetchUserReview();
+                          }}
+                        />
+                      ) : (
+                        <ReviewForm
+                          locationId={id!}
+                          organizationId={location.organization_id}
+                          userId={user.id}
+                          existingReview={userReview}
+                          onReviewSubmitted={() => {
+                            fetchReviews();
+                            fetchUserReview();
+                          }}
+                        />
+                      )}
+                    </TabsContent>
+                    <TabsContent value="detailed">
+                      <DetailedReviewForm
+                        locationId={id!}
+                        organizationId={location.organization_id}
+                        userId={user.id}
+                        onReviewSubmitted={() => {
+                          fetchReviews();
+                          fetchUserReview();
+                        }}
+                      />
+                    </TabsContent>
+                  </Tabs>
                 )}
 
                 {!user && (
