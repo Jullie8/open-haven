@@ -55,6 +55,7 @@ interface ReviewData {
   review_text: string;
   created_at: string;
   verified_visit: boolean;
+  user_id: string;
   profiles?: {
     full_name: string | null;
   } | null;

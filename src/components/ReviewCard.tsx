@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Star, ThumbsUp } from "lucide-react";
+import { Star, ThumbsUp, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
@@ -15,6 +15,7 @@ interface ReviewCardProps {
     review_text: string;
     created_at: string;
     verified_visit: boolean;
+    user_id?: string;
     profiles?: {
       full_name: string | null;
     } | null;
@@ -34,6 +35,8 @@ export const ReviewCard = ({
 }: ReviewCardProps) => {
   const { toast } = useToast();
   const [voting, setVoting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const isOwnReview = user?.id === review.user_id;
 
   const handleHelpfulVote = async () => {
     if (!user) {
@@ -80,6 +83,38 @@ export const ReviewCard = ({
     }
   };
 
+  const handleDelete = async () => {
+    if (!user || !isOwnReview) return;
+
+    if (!confirm("Are you sure you want to delete this review?")) return;
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("reviews")
+        .delete()
+        .eq("id", review.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Review deleted",
+        description: "Your review has been deleted successfully.",
+      });
+
+      onVoteUpdate();
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete review.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <Card>
       <CardContent className="pt-6">
@@ -113,7 +148,7 @@ export const ReviewCard = ({
 
         <p className="text-muted-foreground mb-4">{review.review_text}</p>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
           <Button
             variant={userHasVoted ? "default" : "outline"}
             size="sm"
@@ -123,6 +158,18 @@ export const ReviewCard = ({
             <ThumbsUp className="h-4 w-4 mr-1" />
             Helpful {helpfulCount > 0 && `(${helpfulCount})`}
           </Button>
+          
+          {isOwnReview && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
