@@ -31,6 +31,17 @@ export const ReviewForm = ({
   const { toast } = useToast();
   const [rating, setRating] = useState(existingReview?.rating || 0);
   const [hoveredRating, setHoveredRating] = useState(0);
+  type ProgramRatings = {
+    dignity: number;
+    activities: number;
+    safety: number;
+  };
+
+  const [programRatings, setProgramRatings] = useState<ProgramRatings>({
+    dignity: 0,
+    activities: 0,
+    safety: 0,
+  });
   const [title, setTitle] = useState(existingReview?.title || "");
   const [reviewText, setReviewText] = useState(existingReview?.review_text || "");
   const [submitting, setSubmitting] = useState(false);
@@ -64,7 +75,8 @@ export const ReviewForm = ({
           .update({
             rating,
             title: title.trim(),
-            review_text: reviewText.trim(),
+                review_text: reviewText.trim(),
+                program_ratings: programRatings,
           })
           .eq("id", existingReview.id);
 
@@ -84,6 +96,7 @@ export const ReviewForm = ({
             rating,
             title: title.trim(),
             review_text: reviewText.trim(),
+            program_ratings: programRatings,
             verified_visit: true,
           }]);
 
@@ -115,13 +128,15 @@ export const ReviewForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{existingReview ? "Edit Your Review" : "Write a Review"}</CardTitle>
+        <CardTitle className="text-2xl md:text-3xl">
+          {existingReview ? "Edit Your Review" : "Write a Review"}
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label>Your Rating *</Label>
-            <div className="flex gap-1">
+            <Label className="font-semibold">Your Rating *</Label>
+            <div className="flex items-center gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
@@ -129,10 +144,11 @@ export const ReviewForm = ({
                   onClick={() => setRating(star)}
                   onMouseEnter={() => setHoveredRating(star)}
                   onMouseLeave={() => setHoveredRating(0)}
+                  aria-label={`${star} star`}
                   className="transition-transform hover:scale-110"
                 >
                   <Star
-                    className={`h-8 w-8 ${
+                    className={`h-9 w-9 ${
                       star <= (hoveredRating || rating)
                         ? "fill-primary text-primary"
                         : "text-muted-foreground"
@@ -144,7 +160,7 @@ export const ReviewForm = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="title">Review Title *</Label>
+            <Label htmlFor="title" className="font-semibold">Review Title *</Label>
             <Input
               id="title"
               placeholder="Sum up your experience"
@@ -155,7 +171,7 @@ export const ReviewForm = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="review">Your Review *</Label>
+            <Label htmlFor="review" className="font-semibold">Your Review *</Label>
             <Textarea
               id="review"
               placeholder="Share your experience with this program..."
@@ -164,12 +180,53 @@ export const ReviewForm = ({
               rows={6}
               maxLength={2000}
             />
-            <p className="text-xs text-muted-foreground">
-              {reviewText.length}/2000 characters
-            </p>
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <div>{reviewText.length}/2000 characters</div>
+              <div>{2000 - reviewText.length} characters remaining</div>
+            </div>
           </div>
 
-          <Button type="submit" disabled={submitting} className="w-full">
+          <div className="pt-4 border-t">
+            <div className="mb-3 font-semibold text-base">Program Ratings (optional)</div>
+            <div className="space-y-4">
+              {[
+                { key: 'dignity', label: 'Dignity & Respect' },
+                { key: 'activities', label: 'Activities & Engagement' },
+                { key: 'safety', label: 'Safety & Well-being' },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center justify-between">
+                  <div className="text-sm font-medium">{label}</div>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setProgramRatings((prev) => ({ ...prev, [key]: s }))}
+                        onMouseEnter={() => {}}
+                        onMouseLeave={() => {}}
+                        aria-label={`${label} ${s} star`}
+                        className="transition-transform hover:scale-110"
+                      >
+                        <Star
+                          className={`h-6 w-6 ${
+                            s <= programRatings[key as keyof ProgramRatings]
+                              ? "fill-primary text-primary"
+                              : "text-muted-foreground"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="w-full bg-primary text-white hover:brightness-95 py-4 text-lg"
+          >
             {submitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
