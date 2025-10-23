@@ -5,13 +5,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { ChevronDown, AlertTriangle } from "lucide-react";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { AlertTriangle, Star } from "lucide-react";
 import { StarRating } from "./StarRating";
 import { TagSelector } from "./TagSelector";
 import { useToast } from "@/hooks/use-toast";
@@ -25,7 +26,7 @@ interface DetailedReviewFormProps {
 
 const reviewTypes = [
   { id: "general", label: "General Feedback / Experience" },
-  { id: "safety", label: "Safety Concern ⚠️", warning: true },
+  { id: "safety", label: "Safety Concern", warning: true },
   { id: "staff", label: "Staff / Communication" },
   { id: "program", label: "Program Quality" },
   { id: "facilities", label: "Environment / Facilities" },
@@ -47,37 +48,21 @@ const contextTags = [
   "Activities",
 ];
 
-const ratingCategories = [
+const qualityMetrics = [
   {
-    id: "staff",
-    label: "Staff",
-    description: "Were staff professional, caring, and respectful?",
-  },
-  {
-    id: "communication",
-    label: "Communication",
-    description: "How well did staff communicate with families or guardians?",
-  },
-  {
-    id: "facilities",
-    label: "Facilities & Environment",
-    description:
-      "Was the space clean, safe, and comfortable (lighting, noise, accessibility)?",
+    id: "dignity",
+    label: "Dignity & Respect",
+    description: "Person is treated with dignity and respect",
   },
   {
     id: "activities",
-    label: "Activities & Program Quality",
-    description: "Were activities meaningful, structured, and appropriate?",
+    label: "Activities & Engagement",
+    description: "Activities are meaningful and engaging",
   },
   {
     id: "safety",
-    label: "Safety & Dignity",
-    description: "Did the person feel safe and treated with respect?",
-  },
-  {
-    id: "overall",
-    label: "Overall Rating",
-    description: "Overall experience with the program.",
+    label: "Safety & Well-being",
+    description: "Environment feels safe and supportive",
   },
 ];
 
@@ -88,24 +73,20 @@ export const DetailedReviewForm = ({
   onReviewSubmitted,
 }: DetailedReviewFormProps) => {
   const { toast } = useToast();
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [overallRating, setOverallRating] = useState(0);
+  const [selectedType, setSelectedType] = useState<string>("");
+  const [qualityScores, setQualityScores] = useState<Record<string, number>>({
+    dignity: 3,
+    activities: 3,
+    safety: 3,
+  });
   const [reviewText, setReviewText] = useState("");
   const [selectedActions, setSelectedActions] = useState<string[]>([]);
   const [selectedContextTags, setSelectedContextTags] = useState<string[]>([]);
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [submitting, setSubmitting] = useState(false);
 
-  const showRatings = selectedTypes.includes("general");
   const maxChars = 2000;
-
-  const toggleReviewType = (typeId: string) => {
-    setSelectedTypes((prev) =>
-      prev.includes(typeId)
-        ? prev.filter((id) => id !== typeId)
-        : [...prev, typeId]
-    );
-  };
 
   const toggleAction = (action: string) => {
     setSelectedActions((prev) =>
@@ -118,10 +99,19 @@ export const DetailedReviewForm = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (selectedTypes.length === 0) {
+    if (overallRating === 0) {
       toast({
-        title: "Review type required",
-        description: "Please select at least one review type.",
+        title: "Overall rating required",
+        description: "Please provide an overall rating.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedType) {
+      toast({
+        title: "Focus area required",
+        description: "Please select a focus area for your review.",
         variant: "destructive",
       });
       return;
@@ -153,8 +143,9 @@ export const DetailedReviewForm = ({
       });
 
       // Reset form
-      setSelectedTypes([]);
-      setRatings({});
+      setOverallRating(0);
+      setSelectedType("");
+      setQualityScores({ dignity: 3, activities: 3, safety: 3 });
       setReviewText("");
       setSelectedActions([]);
       setSelectedContextTags([]);
@@ -179,172 +170,205 @@ export const DetailedReviewForm = ({
         <CardTitle>Write a Detailed Review</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Step 1: Review Type */}
-          <Collapsible defaultOpen>
-            <CollapsibleTrigger className="flex items-center justify-between w-full">
-              <h3 className="text-lg font-semibold">Step 1: Select Review Type</h3>
-              <ChevronDown className="h-5 w-5 transition-transform" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 mt-4">
-              {reviewTypes.map((type) => (
-                <div key={type.id} className="flex items-start space-x-2">
-                  <Checkbox
-                    id={type.id}
-                    checked={selectedTypes.includes(type.id)}
-                    onCheckedChange={() => toggleReviewType(type.id)}
-                  />
-                  <Label
-                    htmlFor={type.id}
-                    className={`cursor-pointer ${
-                      type.warning ? "text-destructive flex items-center gap-1" : ""
-                    }`}
-                  >
-                    {type.warning && <AlertTriangle className="h-4 w-4" />}
-                    {type.label}
-                  </Label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Accordion type="multiple" defaultValue={["step1", "step2", "step3"]} className="w-full">
+            {/* Step 1: Overall Rating */}
+            <AccordionItem value="step1">
+              <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+                Overall Rating
+              </AccordionTrigger>
+              <AccordionContent className="pt-4">
+                <div className="space-y-2">
+                  <Label>Rate your overall experience</Label>
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setOverallRating(star)}
+                        className="transition-colors hover:scale-110"
+                        aria-label={`Rate ${star} stars`}
+                      >
+                        <Star
+                          className={`h-8 w-8 ${
+                            star <= overallRating
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-muted-foreground"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  {overallRating > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      {overallRating === 1 && "Poor"}
+                      {overallRating === 2 && "Fair"}
+                      {overallRating === 3 && "Average"}
+                      {overallRating === 4 && "Good"}
+                      {overallRating === 5 && "Excellent"}
+                    </p>
+                  )}
                 </div>
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
+              </AccordionContent>
+            </AccordionItem>
 
-          <Separator />
+            {/* Step 2: Privacy & Visibility */}
+            <AccordionItem value="step2">
+              <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+                Privacy & Visibility
+              </AccordionTrigger>
+              <AccordionContent className="pt-4 space-y-3">
+                <RadioGroup value={visibility} onValueChange={(v: any) => setVisibility(v)}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="public" id="public" />
+                    <Label htmlFor="public" className="cursor-pointer">
+                      Public (visible after moderation)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="private" id="private" />
+                    <Label htmlFor="private" className="cursor-pointer">
+                      Confidential Report (for moderators only)
+                    </Label>
+                  </div>
+                </RadioGroup>
+                <p className="text-xs text-muted-foreground">
+                  Sensitive reports will always be reviewed manually before publishing.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
 
-          {/* Step 2: Structured Ratings */}
-          {showRatings && (
-            <>
-              <Collapsible defaultOpen>
-                <CollapsibleTrigger className="flex items-center justify-between w-full">
-                  <h3 className="text-lg font-semibold">
-                    Step 2: Structured Ratings
-                  </h3>
-                  <ChevronDown className="h-5 w-5 transition-transform" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-6 mt-4">
-                  {ratingCategories.map((category) => (
-                    <StarRating
-                      key={category.id}
-                      id={category.id}
-                      label={category.label}
-                      description={category.description}
-                      value={ratings[category.id] || 0}
-                      onChange={(value) =>
-                        setRatings((prev) => ({ ...prev, [category.id]: value }))
+            {/* Step 3: Identify Focus Area */}
+            <AccordionItem value="step3">
+              <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+                Step 1: Select Review Type
+              </AccordionTrigger>
+              <AccordionContent className="pt-4 space-y-3">
+                <RadioGroup value={selectedType} onValueChange={setSelectedType}>
+                  {reviewTypes.map((type) => (
+                    <div key={type.id} className="flex items-center space-x-2">
+                      <RadioGroupItem value={type.id} id={type.id} />
+                      <Label
+                        htmlFor={type.id}
+                        className={`cursor-pointer ${
+                          type.warning ? "text-destructive flex items-center gap-1" : ""
+                        }`}
+                      >
+                        {type.warning && <AlertTriangle className="h-4 w-4" />}
+                        {type.label}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Step 4: Structured Quality Assessment */}
+            <AccordionItem value="step4">
+              <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+                Structured Quality Assessment
+              </AccordionTrigger>
+              <AccordionContent className="pt-4 space-y-6">
+                {qualityMetrics.map((metric) => (
+                  <div key={metric.id} className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <Label className="font-medium">{metric.label}</Label>
+                      <span className="text-sm font-semibold text-primary">
+                        {qualityScores[metric.id]}/5
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{metric.description}</p>
+                    <Slider
+                      value={[qualityScores[metric.id]]}
+                      onValueChange={(value) =>
+                        setQualityScores((prev) => ({ ...prev, [metric.id]: value[0] }))
+                      }
+                      min={1}
+                      max={5}
+                      step={1}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>1 - Poor</span>
+                      <span>5 - Excellent</span>
+                    </div>
+                  </div>
+                ))}
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Step 5: Narrative Description */}
+            <AccordionItem value="step5">
+              <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+                Step 3: Describe Your Experience
+              </AccordionTrigger>
+              <AccordionContent className="pt-4 space-y-3">
+                <Textarea
+                  placeholder="Describe your experience in detail..."
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  rows={8}
+                  maxLength={maxChars}
+                  className="resize-none"
+                />
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex items-start gap-2 text-xs text-destructive font-medium">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>DO NOT include names, medical details, or addresses</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">
+                    {reviewText.length}/{maxChars} characters
+                  </p>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Step 6: Actions Taken */}
+            <AccordionItem value="step6">
+              <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+                Step 4: Actions Taken
+              </AccordionTrigger>
+              <AccordionContent className="pt-4 space-y-3">
+                <Label>Have you taken any of these actions?</Label>
+                {actionsTaken.map((action) => (
+                  <div key={action} className="flex items-start space-x-2">
+                    <Checkbox
+                      id={`action-${action}`}
+                      checked={selectedActions.includes(action)}
+                      onCheckedChange={() =>
+                        setSelectedActions((prev) =>
+                          prev.includes(action)
+                            ? prev.filter((a) => a !== action)
+                            : [...prev, action]
+                        )
                       }
                     />
-                  ))}
-                </CollapsibleContent>
-              </Collapsible>
-              <Separator />
-            </>
-          )}
+                    <Label htmlFor={`action-${action}`} className="cursor-pointer">
+                      {action}
+                    </Label>
+                  </div>
+                ))}
+              </AccordionContent>
+            </AccordionItem>
 
-          {/* Step 3: Describe the Concern */}
-          <Collapsible defaultOpen>
-            <CollapsibleTrigger className="flex items-center justify-between w-full">
-              <h3 className="text-lg font-semibold">
-                Step 3: Describe Your Experience
-              </h3>
-              <ChevronDown className="h-5 w-5 transition-transform" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-2 mt-4">
-              <Textarea
-                placeholder="Describe your experience in detail..."
-                value={reviewText}
-                onChange={(e) => setReviewText(e.target.value)}
-                rows={8}
-                maxLength={maxChars}
-                className="resize-none"
-              />
-              <div className="flex items-center justify-between text-xs">
-                <p className="text-muted-foreground">
-                  Avoid using personal names or sharing sensitive health info.
-                </p>
-                <p className="text-muted-foreground">
-                  {reviewText.length}/{maxChars} characters
-                </p>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-
-          <Separator />
-
-          {/* Step 4: Actions Taken */}
-          <Collapsible defaultOpen>
-            <CollapsibleTrigger className="flex items-center justify-between w-full">
-              <h3 className="text-lg font-semibold">Step 4: Actions Taken</h3>
-              <ChevronDown className="h-5 w-5 transition-transform" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 mt-4">
-              <Label>Have you taken any of these actions?</Label>
-              {actionsTaken.map((action) => (
-                <div key={action} className="flex items-start space-x-2">
-                  <Checkbox
-                    id={`action-${action}`}
-                    checked={selectedActions.includes(action)}
-                    onCheckedChange={() => toggleAction(action)}
-                  />
-                  <Label htmlFor={`action-${action}`} className="cursor-pointer">
-                    {action}
-                  </Label>
-                </div>
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
-
-          <Separator />
-
-          {/* Step 5: Context Tags */}
-          <Collapsible defaultOpen>
-            <CollapsibleTrigger className="flex items-center justify-between w-full">
-              <h3 className="text-lg font-semibold">
+            {/* Step 7: Optional Context Tags */}
+            <AccordionItem value="step7">
+              <AccordionTrigger className="text-lg font-semibold hover:no-underline">
                 Step 5: Optional Context Tags
-              </h3>
-              <ChevronDown className="h-5 w-5 transition-transform" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-4">
-              <TagSelector
-                label="Select relevant tags (optional)"
-                tags={contextTags}
-                selectedTags={selectedContextTags}
-                onChange={setSelectedContextTags}
-              />
-            </CollapsibleContent>
-          </Collapsible>
+              </AccordionTrigger>
+              <AccordionContent className="pt-4">
+                <TagSelector
+                  label="Select relevant tags (optional)"
+                  tags={contextTags}
+                  selectedTags={selectedContextTags}
+                  onChange={setSelectedContextTags}
+                />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
-          <Separator />
-
-          {/* Step 6: Visibility */}
-          <Collapsible defaultOpen>
-            <CollapsibleTrigger className="flex items-center justify-between w-full">
-              <h3 className="text-lg font-semibold">Step 6: Review Visibility</h3>
-              <ChevronDown className="h-5 w-5 transition-transform" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 mt-4">
-              <RadioGroup value={visibility} onValueChange={(v: any) => setVisibility(v)}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="public" id="public" />
-                  <Label htmlFor="public" className="cursor-pointer">
-                    Public (visible after moderation)
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="private" id="private" />
-                  <Label htmlFor="private" className="cursor-pointer">
-                    Private (for moderators only)
-                  </Label>
-                </div>
-              </RadioGroup>
-              <p className="text-xs text-muted-foreground">
-                Sensitive reports will always be reviewed manually before publishing.
-              </p>
-            </CollapsibleContent>
-          </Collapsible>
-
-          <Separator />
-
-          {/* Step 7: Submit */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+          {/* Submit Section */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-6">
             <Button type="submit" disabled={submitting} className="flex-1">
               {submitting ? "Submitting..." : "Submit Review"}
             </Button>
@@ -352,8 +376,9 @@ export const DetailedReviewForm = ({
               type="button"
               variant="outline"
               onClick={() => {
-                setSelectedTypes([]);
-                setRatings({});
+                setOverallRating(0);
+                setSelectedType("");
+                setQualityScores({ dignity: 3, activities: 3, safety: 3 });
                 setReviewText("");
                 setSelectedActions([]);
                 setSelectedContextTags([]);
