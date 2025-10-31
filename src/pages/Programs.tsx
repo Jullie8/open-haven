@@ -142,8 +142,10 @@ const Programs = () => {
         service.toLowerCase().includes(searchQuery.toLowerCase())
       ) ?? false);
 
+    // Normalize county names data includes the word "County"
+    const normalizeCounty = (c: string) => (c || "").replace(/\s+county$/i, "").trim().toLowerCase();
     const matchesCounty =
-      countyFilter === "All Counties" || location.county === countyFilter;
+      countyFilter === "All Counties" || normalizeCounty(location.county) === normalizeCounty(countyFilter);
 
     return matchesSearch && matchesCounty;
   });
